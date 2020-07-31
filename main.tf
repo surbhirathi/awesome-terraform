@@ -15,12 +15,21 @@ resource "azurerm_virtual_network" "web_server_vnet" {
     address_space = [var.web_server_address_space]
 }
 
-resource "azurerm_subnet" "web_server_subnet" {
+/*resource "azurerm_subnet" "web_server_subnet" {
     name = "${var.resource_prefix}-subnet"
     resource_group_name = azurerm_resource_group.web_server_rg.name
     virtual_network_name = azurerm_virtual_network.web_server_vnet.name
     address_prefix = var.web_server_address_prefixes
 }
+*/
+resource "azurerm_subnet" "web_server_subnet" {
+    for_each = var.web_server_subnet
+    name = each.key
+    resource_group_name = azurerm_resource_group.web_server_rg.name
+    virtual_network_name = azurerm_virtual_network.web_server_vnet.name
+    address_prefix = each.value
+
+}	
 
 resource "azurerm_network_interface" "web_server_nic"{
     name = "${var.web_server_name}-${format("%02d",count.index)}-nic" 
@@ -29,7 +38,7 @@ resource "azurerm_network_interface" "web_server_nic"{
     count = var.web_server_count
     ip_configuration {
         name = "${var.web_server_name}-ip"
-        subnet_id = azurerm_subnet.web_server_subnet.id 
+         subnet_id = azurerm_subnet.web_server_subnet["web-server"].id 
         private_ip_address_allocation = "dynamic"
         public_ip_address_id = count.index == 0 ? azurerm_public_ip.web_server_ip.id : null 
     }
@@ -64,7 +73,7 @@ resource "azurerm_network_security_rule" "web_server_nsg_rule_rdp"{
 
 resource "azurerm_subnet_network_security_group_association" "web_server_sag"{
     network_security_group_id = azurerm_network_security_group.web_server_sg.id
-    subnet_id = azurerm_subnet.web_server_subnet.id
+     subnet_id = azurerm_subnet.web_server_subnet["web-server"].id
 }
 
 resource "azurerm_windows_virtual_machine" "web_server" {
